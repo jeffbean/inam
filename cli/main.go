@@ -11,7 +11,8 @@ import (
 )
 
 type options struct {
-	Verbose bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	Verbose bool                 `short:"v" long:"verbose" description:"Show verbose debug information"`
+	Config  func(s string) error `long:"config" description:"INI config file" no-ini:"true"`
 }
 
 func main() {
@@ -26,6 +27,13 @@ func main() {
 
 	var opts options
 	parser := flags.NewParser(&opts, flags.Default)
+
+	opts.Config = func(s string) error {
+		ini := flags.NewIniParser(parser)
+
+		return ini.ParseFile(s)
+	}
+
 	parser.CommandHandler = func(command flags.Commander, args []string) error {
 		if opts.Verbose {
 			zapCfg.Level.SetLevel(zap.DebugLevel)

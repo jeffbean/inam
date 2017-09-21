@@ -27,7 +27,8 @@ type phabCommand struct {
 	PhabURI      string `long:"phab-uri" description:"The base phab uri" default:"https://phab.example.com"`
 	PhabAPIToken string `long:"api-token" description:"The phab api token to connect with, https://phab.example.com/settings/user/<user>/page/apitokens/"`
 
-	Tasks  string `long:"tasks" description:"Comma sep List of tasks "`
+	Tasks string `long:"tasks" description:"Comma sep List of tasks "`
+
 	output io.Writer
 	// The phab conduit client for the command to share the client session
 	client *gonduit.Conn
