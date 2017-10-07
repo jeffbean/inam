@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/etcinit/gonduit"
@@ -66,22 +67,35 @@ func (pc *phabCommand) Execute(_ []string) error {
 	var taskList []*entities.PHIDResult
 
 	if len(pc.Projects) > 0 {
-		projectPHIDs, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
+		projects, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
 		if err != nil {
 			return err
 		}
-		for 
+		// We dont want to fail but just log some errors on if we cant find what we were looking for
+		err = pc.compareProjects(strings.Split(pc.Projects, ","), projects)
+		if err != nil {
+			pc.logger.Error("errors looking up projects", zap.Error(err))
+		}
+
+		for projectName := range projects {
+			fmt.Fprintf(pc.output, "Project: %s", projectName)
+		}
 	}
 
-	tasks, err := pc.phabLookupPHIDByName(strings.Split(pc.Tasks, ","))
-	if err != nil {
-		return err
-	}
-	for task, result := range tasks {
-		taskList = append(taskList, result)
-		fmt.Fprintf(pc.output, "Task: %s - status: %s\n", task, result.Status)
-	}
+	if len(pc.Tasks) > 0 {
+		tasks, err := pc.phabLookupPHIDByName(strings.Split(pc.Tasks, ","))
+		if err != nil {
+			return err
+		}
+		for _, result := range tasks {
+			taskList = append(taskList, result)
+		}
 
+		sort.Slice(taskList, func(i, j int) bool { return taskList[i].Name < taskList[j].Name })
+		for _, task := range taskList {
+			fmt.Fprintf(pc.output, "Task: %s - status: %s\n", task.Name, task.Status)
+		}
+	}
 	return nil
 }
 
@@ -103,23 +117,37 @@ func (pc *phabCommand) phabLookupPHIDByName(tasks []string) (responses.PHIDLooku
 			errs = append(errs, fmt.Errorf("task not found: %s", task))
 		}
 	}
-	if len(errs) > 0 {
-		return nil, multierr.Combine(errs...)
-	}
 
 	return res, multierr.Combine(errs...)
 }
 
-func (pc *phabCommand) phabProjectLookup(projects []string) (*responses.ProjectQueryResponse, error) {
+func (pc *phabCommand) phabProjectLookup(projects []string) (map[string]*entities.Project, error) {
 	var err error
+	// we should only get at least the length of the searched values back
+	projectMap := make(map[string]*entities.Project, len(projects))
 
-	// This supplies a list of task ids and avoids doing a lookup per Task
+	// This supplies a list of project names to avoids doing a lookup per Project
 	res, err := pc.client.ProjectQuery(requests.ProjectQueryRequest{
 		Names: projects,
 	})
 	if err != nil {
-		return &responses.ProjectQueryResponse{}, err
+		return nil, err
 	}
 
-	return res, nil
+	for _, project := range res.Data {
+		projectMap[project.Name] = &project
+	}
+
+	return projectMap, nil
+}
+
+func (pc *phabCommand) compareProjects(projects []string, foundProjects map[string]*entities.Project) error {
+	// Check that we found all the projects we were looking for.
+	var errs []error
+	for _, project := range projects {
+		if _, ok := foundProjects[project]; !ok {
+			errs = append(errs, fmt.Errorf("project not found: %s", project))
+		}
+	}
+	return multierr.Combine(errs...)
 }
