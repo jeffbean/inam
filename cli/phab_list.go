@@ -9,6 +9,7 @@ import (
 
 	"github.com/etcinit/gonduit"
 	"github.com/etcinit/gonduit/core"
+	"github.com/etcinit/gonduit/entities"
 	"github.com/etcinit/gonduit/requests"
 	"github.com/etcinit/gonduit/responses"
 
@@ -27,7 +28,8 @@ type phabCommand struct {
 	PhabURI      string `long:"phab-uri" description:"The base phab uri" default:"https://phab.example.com"`
 	PhabAPIToken string `long:"api-token" description:"The phab api token to connect with, https://phab.example.com/settings/user/<user>/page/apitokens/"`
 
-	Tasks string `long:"tasks" description:"Comma sep List of tasks "`
+	Tasks    string `long:"tasks" description:"Comma sep List of tasks "`
+	Projects string `long:"projects" description:"Comma sep list of projects to get all tasks from"`
 
 	output io.Writer
 	// The phab conduit client for the command to share the client session
@@ -61,13 +63,23 @@ func (pc *phabCommand) Execute(_ []string) error {
 		return err
 	}
 	pc.client = client
+	var taskList []*entities.PHIDResult
+
+	if len(pc.Projects) > 0 {
+		projectPHIDs, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
+		if err != nil {
+			return err
+		}
+		for 
+	}
 
 	tasks, err := pc.phabLookupPHIDByName(strings.Split(pc.Tasks, ","))
 	if err != nil {
 		return err
 	}
-	for _, task := range tasks {
-		fmt.Fprintf(pc.output, "Task: %s - status: %s\n", task.Name, task.Status)
+	for task, result := range tasks {
+		taskList = append(taskList, result)
+		fmt.Fprintf(pc.output, "Task: %s - status: %s\n", task, result.Status)
 	}
 
 	return nil
@@ -96,4 +108,18 @@ func (pc *phabCommand) phabLookupPHIDByName(tasks []string) (responses.PHIDLooku
 	}
 
 	return res, multierr.Combine(errs...)
+}
+
+func (pc *phabCommand) phabProjectLookup(projects []string) (*responses.ProjectQueryResponse, error) {
+	var err error
+
+	// This supplies a list of task ids and avoids doing a lookup per Task
+	res, err := pc.client.ProjectQuery(requests.ProjectQueryRequest{
+		Names: projects,
+	})
+	if err != nil {
+		return &responses.ProjectQueryResponse{}, err
+	}
+
+	return res, nil
 }
