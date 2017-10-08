@@ -64,7 +64,6 @@ func (pc *phabCommand) Execute(_ []string) error {
 	}
 	pc.client = client
 	var taskList []*entities.PHIDResult
-	var taskProjectList []*entities.ManiphestTask
 
 	if len(pc.Projects) > 0 {
 		projects, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
@@ -82,24 +81,21 @@ func (pc *phabCommand) Execute(_ []string) error {
 		}
 
 		if len(projects) > 0 {
+			var projectLookup []string
 			// Now search for all manifests for the projects we found.
 			for _, project := range projects {
-				res, err := pc.client.ManiphestQuery(requests.ManiphestQueryRequest{
-					ProjectPHIDs: []string{project.PHID},
-				})
-				if err != nil {
-					return err
-				}
+				projectLookup = append(projectLookup, project.PHID)
+			}
+			tasks, err := pc.phabManiphestQuery(requests.ManiphestQueryRequest{
+				ProjectPHIDs: projectLookup,
+			})
+			if err != nil {
+				return err
+			}
 
-				for _, result := range *res {
-					taskProjectList = append(taskProjectList, result)
-
-				}
-				sort.Slice(taskProjectList, func(i, j int) bool { return taskProjectList[i].Status < taskProjectList[j].Status })
-				for _, task := range taskProjectList {
-					fmt.Fprintf(pc.output, "\tTask: %s - status: %-10s -> %s\n", task.ObjectName, task.Status, task.Title)
-				}
-
+			sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
+			for _, task := range tasks {
+				fmt.Fprintf(pc.output, "\tTask: %s - status: %-10s -> %s\n", task.ObjectName, task.Status, task.Title)
 			}
 		}
 	}
@@ -141,6 +137,21 @@ func (pc *phabCommand) phabLookupPHIDByName(tasks []string) (responses.PHIDLooku
 	}
 
 	return res, multierr.Combine(errs...)
+}
+
+func (pc *phabCommand) phabManiphestQuery(req requests.ManiphestQueryRequest) ([]*entities.ManiphestTask, error) {
+	var err error
+
+	res, err := pc.client.ManiphestQuery(req)
+	if err != nil {
+		return nil, err
+	}
+	var tasks []*entities.ManiphestTask
+	for _, task := range *res {
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
 }
 
 func (pc *phabCommand) phabProjectLookup(projects []string) (map[string]*entities.Project, error) {

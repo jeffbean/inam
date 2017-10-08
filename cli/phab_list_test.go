@@ -151,7 +151,7 @@ func TestPhabCommandProjects(t *testing.T) {
 		wantLogs  []observer.LoggedEntry
 	}{
 		{
-			wantOut:  "Project: Hello World",
+			wantOut:  "Project: Hello World\n",
 			projects: "Hello World",
 			responses: map[string]interface{}{
 				"result": responses.ProjectQueryResponse{
@@ -165,7 +165,7 @@ func TestPhabCommandProjects(t *testing.T) {
 			},
 		},
 		{
-			wantOut: "Project: Test project",
+			wantOut: "Project: Test project\n",
 			wantLogs: []observer.LoggedEntry{{
 				Entry:   zapcore.Entry{Level: zap.ErrorLevel, Message: "errors looking up projects"},
 				Context: []zapcore.Field{zap.Error(errors.New("project not found: Dan testing"))},
@@ -210,6 +210,11 @@ func TestPhabCommandProjects(t *testing.T) {
 				"project.query",
 				http.StatusOK,
 				tt.responses,
+			)
+			s.RegisterMethod(
+				"maniphest.query",
+				http.StatusOK,
+				map[string]interface{}{"result": responses.ManiphestQueryResponse{}},
 			)
 
 			baseCmd := newPhabListCommand(&options{}, logger)

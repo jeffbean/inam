@@ -2,3 +2,4 @@ vendor/
 cli/cli
 config/*.ini
 *.swp
+tests.xml
