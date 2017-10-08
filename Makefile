@@ -4,12 +4,13 @@ VET_REPORT = vet.report
 TEST_REPORT = tests.xml
 GOARCH = amd64
 
-VERSION?=?
+VERSION=1.0
 COMMIT=$(shell git rev-parse HEAD)
-BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
+
+LDFLAGS=-ldflags "-X main.Version=${VERSION} -X main.Build=${COMMIT}"
 
 build:
-	go build -o ${BINARY}
+	go build ${} -o ${BINARY}
 
 clean: 
 	if [ -f ${BINARY} ]; then rm ${BINARY}; fi
