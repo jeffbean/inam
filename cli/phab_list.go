@@ -13,7 +13,6 @@ import (
 	"github.com/etcinit/gonduit/entities"
 	"github.com/etcinit/gonduit/requests"
 	"github.com/etcinit/gonduit/responses"
-
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -65,6 +64,7 @@ func (pc *phabCommand) Execute(_ []string) error {
 	}
 	pc.client = client
 	var taskList []*entities.PHIDResult
+	var taskProjectList []*entities.ManiphestTask
 
 	if len(pc.Projects) > 0 {
 		projects, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
@@ -78,7 +78,29 @@ func (pc *phabCommand) Execute(_ []string) error {
 		}
 
 		for projectName := range projects {
-			fmt.Fprintf(pc.output, "Project: %s", projectName)
+			fmt.Fprintf(pc.output, "Project: %s\n", projectName)
+		}
+
+		if len(projects) > 0 {
+			// Now search for all manifests for the projects we found.
+			for _, project := range projects {
+				res, err := pc.client.ManiphestQuery(requests.ManiphestQueryRequest{
+					ProjectPHIDs: []string{project.PHID},
+				})
+				if err != nil {
+					return err
+				}
+
+				for _, result := range *res {
+					taskProjectList = append(taskProjectList, result)
+
+				}
+				sort.Slice(taskProjectList, func(i, j int) bool { return taskProjectList[i].Status < taskProjectList[j].Status })
+				for _, task := range taskProjectList {
+					fmt.Fprintf(pc.output, "\tTask: %s - status: %-10s -> %s\n", task.ObjectName, task.Status, task.Title)
+				}
+
+			}
 		}
 	}
 
