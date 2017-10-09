@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jeffbean/inam/phab"
+
 	"github.com/etcinit/gonduit"
 	"github.com/etcinit/gonduit/core"
 	"github.com/etcinit/gonduit/entities"
@@ -76,8 +78,9 @@ func (pc *phabCommand) Execute(_ []string) error {
 			pc.logger.Error("errors looking up projects", zap.Error(err))
 		}
 
-		for projectName := range projects {
+		for projectName, p := range projects {
 			fmt.Fprintf(pc.output, "Project: %s\n", projectName)
+			pc.logger.Debug("project found", zap.Any("phid", p.PHID), zap.Any("name", p.Name))
 		}
 
 		if len(projects) > 0 {
@@ -86,27 +89,40 @@ func (pc *phabCommand) Execute(_ []string) error {
 			for _, project := range projects {
 				projectLookup = append(projectLookup, project.PHID)
 			}
-			tasks, err := pc.phabManiphestQuery(requests.ManiphestQueryRequest{
+			tasks, err := pc.phabManiphestQueryTree(requests.ManiphestQueryRequest{
 				ProjectPHIDs: projectLookup,
+				Status:       "status-open",
 			})
 			if err != nil {
 				return err
 			}
-
-			sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
+			// sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
 			for _, task := range tasks {
-				fmt.Fprintf(pc.output, "\tTask: %s - status: %-10s -> %s\n", task.ObjectName, task.Status, task.Title)
+				fmt.Fprintf(pc.output, phab.StringTree(task))
 			}
 		}
 	}
 
 	if len(pc.Tasks) > 0 {
-		tasks, err := pc.phabLookupPHIDByName(strings.Split(pc.Tasks, ","))
+		phids, err := pc.phabLookupPHIDByName(strings.Split(pc.Tasks, ","))
 		if err != nil {
 			return err
 		}
-		for _, result := range tasks {
-			taskList = append(taskList, result)
+		for _, result := range phids {
+			if result.Type == "TASK" {
+				tasks, err := pc.phabManiphestQueryTree(requests.ManiphestQueryRequest{
+					PHIDs:  []string{result.PHID},
+					Status: "status-open",
+				})
+				if err != nil {
+					return err
+				}
+				// sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
+				for _, task := range tasks {
+					fmt.Fprintf(pc.output, phab.StringTree(task))
+				}
+
+			}
 		}
 
 		sort.Slice(taskList, func(i, j int) bool { return taskList[i].Name < taskList[j].Name })
@@ -139,19 +155,33 @@ func (pc *phabCommand) phabLookupPHIDByName(tasks []string) (responses.PHIDLooku
 	return res, multierr.Combine(errs...)
 }
 
-func (pc *phabCommand) phabManiphestQuery(req requests.ManiphestQueryRequest) ([]*entities.ManiphestTask, error) {
-	var err error
+func (pc *phabCommand) phabManiphestQueryTree(req requests.ManiphestQueryRequest) ([]*phab.TaskTree, error) {
+	// var errs []error
+	var items []*phab.TaskTree
 
 	res, err := pc.client.ManiphestQuery(req)
 	if err != nil {
 		return nil, err
 	}
-	var tasks []*entities.ManiphestTask
+
 	for _, task := range *res {
-		tasks = append(tasks, task)
+		child := &phab.TaskTree{ManiphestTask: task, Items: nil}
+
+		if len(task.DependsOnTaskPHIDs) > 0 {
+			pc.logger.Debug("task has dependant tasks", zap.Any("task", task.ObjectName), zap.Any("items", task.DependsOnTaskPHIDs))
+			newTasks, err := pc.phabManiphestQueryTree(requests.ManiphestQueryRequest{
+				PHIDs:  task.DependsOnTaskPHIDs,
+				Status: "status-open",
+			})
+			if err != nil {
+				return nil, err
+			}
+			child.Items = newTasks
+		}
+		items = append(items, child)
 	}
 
-	return tasks, nil
+	return items, nil
 }
 
 func (pc *phabCommand) phabProjectLookup(projects []string) (map[string]*entities.Project, error) {
