@@ -7,7 +7,7 @@ COMMIT=$(shell git rev-parse HEAD)
 
 TEST_REPORT= tests.xml
 
-LDFLAGS=-ldflags "-X main.Version=${VERSION} -X main.Build=${COMMIT}"
+# LDFLAGS=-ldflags "-X main.Version=${VERSION} -X main.Build=${COMMIT}"
 
 .PHONY: run
 run: build
@@ -17,6 +17,7 @@ run: build
 build: format
 	@echo "Running go build"
 	go build -i ${LDFLAGS} $(PACKAGES)
+	go build -i ${LDFLAGS} .
 
 .PHONY: test
 test:
