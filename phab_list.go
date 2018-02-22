@@ -96,7 +96,7 @@ func (pc *phabCommand) Execute(_ []string) error {
 			if err != nil {
 				return err
 			}
-			// sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
+			sort.Slice(tasks, func(i, j int) bool { return tasks[i].ID < tasks[j].ID })
 			for _, task := range tasks {
 				fmt.Fprintf(pc.output, phab.StringTree(task))
 			}
@@ -125,7 +125,7 @@ func (pc *phabCommand) Execute(_ []string) error {
 			}
 		}
 
-		sort.Slice(taskList, func(i, j int) bool { return taskList[i].Name < taskList[j].Name })
+		sort.Slice(taskList, func(i, j int) bool { return taskList[i].PHID < taskList[j].PHID })
 		for _, task := range taskList {
 			fmt.Fprintf(pc.output, "Task: %s - status: %s\n", task.Name, task.Status)
 		}
@@ -180,6 +180,7 @@ func (pc *phabCommand) phabManiphestQueryTree(req requests.ManiphestQueryRequest
 		}
 		items = append(items, child)
 	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 
 	return items, nil
 }
