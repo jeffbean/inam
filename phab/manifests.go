@@ -2,6 +2,8 @@ package phab
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/etcinit/gonduit/entities"
 )
@@ -45,9 +47,11 @@ func stringLine(name string, spaces []bool, last bool) (result string) {
 }
 
 func stringObjItems(items []*TaskTree, spaces []bool) (result string) {
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+
 	for i, f := range items {
 		last := (i >= len(items)-1)
-		result += stringLine(fmt.Sprintf("%s: %s", f.ObjectName, f.Title), spaces, last)
+		result += stringLine(fmt.Sprintf("%s: %-6v - %s", f.ObjectName, strings.ToUpper(f.Priority), f.Title), spaces, last)
 		if len(f.Items) > 0 {
 			spacesChild := append(spaces, last)
 			result += stringObjItems(f.Items, spacesChild)
