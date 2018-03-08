@@ -46,6 +46,7 @@ func main() {
 
 	commands := []command{
 		newPhabListCommand(&opts, logger),
+		newPhabBulkCreateCommand(&opts, logger),
 	}
 
 	for _, cmd := range commands {
