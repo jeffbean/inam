@@ -1,8 +1,8 @@
-hash: ebb84a7c4caee7123eb7d51bfb87d6ef1891645d22bf91585cb12ed440998d9f
-updated: 2017-09-21T10:46:09.173287381-07:00
+hash: 11ee9af5a8c949b8b24b84352bdbade67e9ff7e3b85354983e81d729e371c3c4
+updated: 2018-03-08T13:05:51.525714-08:00
 imports:
 - name: github.com/etcinit/gonduit
-  version: 6dc89124fcfda041762fa702c0fd58b8c23c1c7a
+  version: 7f1de4f60bbb64917cd6b8e18c3bd2df08760a9d
   subpackages:
   - constants
   - core
@@ -23,30 +23,33 @@ imports:
 - name: github.com/karlseguin/typed
   version: 8485ce47e80a176de6b192c76d06281cebdb9ff2
 - name: github.com/mattn/go-colorable
-  version: ad5389df28cdac544c99bd7b9161a0b5b6ca9d1b
+  version: 7dc3415be66d7cc68bf0182f35c8d31f8d2ad8a7
 - name: github.com/mattn/go-isatty
-  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
+  version: 6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: go.uber.org/atomic
-  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
 - name: go.uber.org/multierr
-  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+  version: ddea229ff1dff9e6fe8a6c0344ac73b09e81fce5
 - name: go.uber.org/zap
-  version: 3216c4c73e8ebbafff73c456dd27143f4a7c1f94
+  version: 35aad584952c3e7020db7b839f6b102de6271f89
   subpackages:
   - buffer
   - internal/bufferpool
   - internal/color
   - internal/exit
   - zapcore
+  - zaptest/observer
 - name: golang.org/x/sys
-  version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
+  version: dd2ff4accc098aceecb86b36eaa7829b2a17b1c9
   subpackages:
   - unix
+- name: gopkg.in/yaml.v2
+  version: 7f97868eec74b32b0982dd158a51a446d1da7eb5
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -54,7 +57,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
   - require

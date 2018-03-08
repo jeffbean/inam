@@ -19,11 +19,12 @@ import (
 
 func TestPhabCommandTasks(t *testing.T) {
 	tests := []struct {
-		responses  map[string]interface{}
-		tasks      string
-		serverCode int
-		wantOut    string
-		wantErr    string
+		responses   map[string]interface{}
+		mqResponses map[string]interface{}
+		tasks       string
+		serverCode  int
+		wantOut     string
+		wantErr     string
 	}{
 		{
 			wantOut:    "Task: T123456 - status: closed\n",
@@ -86,16 +87,19 @@ func TestPhabCommandTasks(t *testing.T) {
 						Name:   "T123",
 						PHID:   "phid-testing-123",
 						Status: "closed",
+						Type:   "TASK",
 					},
 					"T456": &entities.PHIDResult{
 						Name:   "T456",
 						PHID:   "phid-testing-456",
 						Status: "open",
+						Type:   "TASK",
 					},
 					"A023": &entities.PHIDResult{
 						Name:   "A023",
 						PHID:   "phid-testing-123",
 						Status: "closed",
+						Type:   "TASK",
 					},
 				},
 			},
@@ -118,6 +122,8 @@ func TestPhabCommandTasks(t *testing.T) {
 				tt.serverCode,
 				tt.responses,
 			)
+
+			s.RegisterMethod("maniphest.query", tt.serverCode, map[string]interface{}{"result": responses.ManiphestQueryResponse{}})
 
 			baseCmd := newPhabListCommand(&options{}, logger)
 			assert.Equal(t, "phab", baseCmd.Name())
@@ -142,6 +148,7 @@ func TestPhabCommandTasks(t *testing.T) {
 		})
 	}
 }
+
 func TestPhabCommandProjects(t *testing.T) {
 	tests := []struct {
 		responses map[string]interface{}

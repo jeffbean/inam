@@ -1,0 +1,17 @@
+taskTemplate: |
+  TESTING Hello this is a task description template {{ .InsertHere }}. You are in chagre of the projects {{ .Projects }} and have to do something for us.
+
+  Thanks,
+  TeamA
+titleTemplate: TESTING Hello {{ .Owner }} this is a task title
+commonProjects:
+- testing-phab-cmd
+commonCCUsers:
+- bean
+emails:
+- owner: bean
+  projects:
+  - testing-phab-cmd
+  insertHere: foobar
+- owner: bean
+  insertHere: foobar2
