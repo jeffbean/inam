@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/etcinit/gonduit/entities"
 	"github.com/etcinit/gonduit/requests"
 	"github.com/etcinit/gonduit/responses"
+	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -68,13 +68,12 @@ func (pc *phabCommand) Execute(_ []string) error {
 	var taskList []*entities.PHIDResult
 
 	if len(pc.Projects) > 0 {
-		projects, err := pc.phabProjectLookup(strings.Split(pc.Projects, ","))
+		projects, err := phabProjectLookup(pc.client, strings.Split(pc.Projects, ","))
 		if err != nil {
 			return err
 		}
 		// We dont want to fail but just log some errors on if we cant find what we were looking for
-		err = pc.compareProjects(strings.Split(pc.Projects, ","), projects)
-		if err != nil {
+		if err = compareProjects(strings.Split(pc.Projects, ","), projects); err != nil {
 			pc.logger.Error("errors looking up projects", zap.Error(err))
 		}
 
@@ -109,19 +108,21 @@ func (pc *phabCommand) Execute(_ []string) error {
 			return err
 		}
 		for _, result := range phids {
+			taskList = append(taskList, result)
+			// FIXME: this is showing the tree and the list of tasks -
+			// pick one and change this all around
 			if result.Type == "TASK" {
 				tasks, err := pc.phabManiphestQueryTree(requests.ManiphestQueryRequest{
 					PHIDs:  []string{result.PHID},
 					Status: "status-open",
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to get task from phab ids: %v", err)
 				}
-				// sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
+				sort.Slice(tasks, func(i, j int) bool { return tasks[i].Status < tasks[j].Status })
 				for _, task := range tasks {
 					fmt.Fprintf(pc.output, phab.StringTree(task))
 				}
-
 			}
 		}
 
@@ -176,26 +177,30 @@ func (pc *phabCommand) phabManiphestQueryTree(req requests.ManiphestQueryRequest
 			if err != nil {
 				return nil, err
 			}
+
 			child.Items = newTasks
 		}
 		items = append(items, child)
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
-
 	return items, nil
 }
 
-func (pc *phabCommand) phabProjectLookup(projects []string) (map[string]*entities.Project, error) {
+func phabProjectLookup(client *gonduit.Conn, projects []string) (map[string]*entities.Project, error) {
+	projectMap := make(map[string]*entities.Project)
+	if len(projects) < 1 {
+		return projectMap, nil
+	}
+
 	var err error
 	// we should only get at least the length of the searched values back
-	projectMap := make(map[string]*entities.Project, len(projects))
 
 	// This supplies a list of project names to avoids doing a lookup per Project
-	res, err := pc.client.ProjectQuery(requests.ProjectQueryRequest{
+	res, err := client.ProjectQuery(requests.ProjectQueryRequest{
 		Names: projects,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find projects: %v", projects)
 	}
 
 	for _, project := range res.Data {
@@ -205,7 +210,7 @@ func (pc *phabCommand) phabProjectLookup(projects []string) (map[string]*entitie
 	return projectMap, nil
 }
 
-func (pc *phabCommand) compareProjects(projects []string, foundProjects map[string]*entities.Project) error {
+func compareProjects(projects []string, foundProjects map[string]*entities.Project) error {
 	// Check that we found all the projects we were looking for.
 	var errs []error
 	for _, project := range projects {
