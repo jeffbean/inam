@@ -26,6 +26,24 @@ var (
 	errNoProjectSpecified = errors.New("no project specified to create task")
 )
 
+// ManiphestCreateTaskRequest represents a request to maniphest.createtask.
+type ManiphestCreateTaskRequest struct {
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	OwnerPHID    string   `json:"ownerPHID"`
+	ViewPolicy   string   `json:"viewPolicy"`
+	EditPolicy   string   `json:"editPolicy"`
+	CCPHIDs      []string `json:"ccPHIDs"`
+	Priority     int      `json:"priority"`
+	ProjectPHIDs []string `json:"projectPHIDs"`
+	Auxiliary    Aux      `json:"auxiliary"`
+	requests.Request
+}
+
+type Aux struct {
+	Type string `json:"std:maniphest:task_type"`
+}
+
 type yamlConfig struct {
 	TaskTemplate  string `yaml:"taskTemplate"`
 	TitleTemplate string `yaml:"titleTemplate"`
@@ -169,13 +187,13 @@ func (pc *phabBulkCreateCommand) createTemplateTask(p createTaskParams) error {
 		return err
 	}
 
-	pc.logger.Info("email users", zap.Any("users", emailUsers))
+	pc.logger.Debug("email users", zap.Any("users", emailUsers))
 
 	owner, err := getPhabUsers(pc.client, []string{p.emailConf.Owner})
 	if err != nil {
 		return errors.Wrapf(err, "failed to find phab user: %v", p.emailConf.Owner)
 	}
-	pc.logger.Info("owner user found", zap.Any("users", owner))
+	pc.logger.Debug("owner user found", zap.Any("users", owner))
 
 	if err := compareUsers([]string{p.emailConf.Owner}, owner); err != nil {
 		pc.logger.Error("errors looking up owner user", zap.Error(err))
@@ -272,15 +290,20 @@ func (pc *phabBulkCreateCommand) createNewPhabTask(
 	if !pc.ActuallyCreate {
 		return &entities.ManiphestTask{ObjectName: "TFAKETASK"}, nil
 	}
-
-	// TODO: figure out how to specify the task type since we have custom types
-	return pc.client.ManiphestCreateTask(requests.ManiphestCreateTaskRequest{
+	var mt entities.ManiphestTask
+	req := ManiphestCreateTaskRequest{
 		Title:        title,
 		Description:  description,
 		OwnerPHID:    owner.PHID,
 		ProjectPHIDs: projects,
 		CCPHIDs:      ccUserIDs,
-	})
+		Auxiliary:    Aux{Type: "task"},
+	}
+	// TODO: figure out how to specify the task type since we have custom types
+	if err := pc.client.Call("maniphest.createtask", &req, &mt); err != nil {
+		return nil, err
+	}
+	return &mt, nil
 }
 
 func compareUsers(wantUsers []string, foundUsers map[string]phab.User) error {
