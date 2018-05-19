@@ -30,6 +30,8 @@ type phabCommand struct {
 	PhabURI      string `long:"phab-uri" description:"The base phab uri" default:"https://phab.example.com"`
 	PhabAPIToken string `long:"api-token" description:"The phab api token to connect with, https://phab.example.com/settings/user/<user>/page/apitokens/"`
 
+	TasksByOwner string `long:"task_author" description:"query for phab tasks by owner"`
+
 	Tasks    string `long:"tasks" description:"Comma sep List of tasks "`
 	Projects string `long:"projects" description:"Comma sep list of projects to get all tasks from"`
 
