@@ -1,4 +1,4 @@
-PACKAGES := $(shell glide novendor)
+PACKAGES := ./...
 
 .DEFAULT_GOAL:=all
 
