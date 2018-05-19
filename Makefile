@@ -1,11 +1,11 @@
 PACKAGES := $(shell glide novendor)
 
-.DEFAULT_GOAL:=build
+.DEFAULT_GOAL:=all
 
 VERSION=1.0
 COMMIT=$(shell git rev-parse HEAD)
-
-TEST_REPORT= tests.xml
+BINARY=inam
+TEST_REPORT=tests.xml
 
 # LDFLAGS=-ldflags "-X main.Version=${VERSION} -X main.Build=${COMMIT}"
 
@@ -13,21 +13,19 @@ TEST_REPORT= tests.xml
 run: build
 	./cli/cli
 
+.PHONY: all
+all: clean format vet build test
+
 .PHONY: build
-build: format
+build: format vet
 	@echo "Running go build"
 	go build -i ${LDFLAGS} $(PACKAGES)
 	go build -i ${LDFLAGS} .
 
 .PHONY: test
-test:
+test: build
 	@echo "Running all tests"
 	go test -cover -race $(PACKAGES)
-
-.PHONY: install
-install:
-	glide --version || go get github.com/Masterminds/glide
-	glide install
 
 .PHONY: format
 format:
